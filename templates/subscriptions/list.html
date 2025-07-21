@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}My Subscriptions{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4 align-items-center">
+        <div class="col">
+            <h2>My Subscriptions</h2>
+        </div>
+        <div class="col text-end">
+            <div class="d-inline-block me-2">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-4 shadow" style="min-width: 320px;">
+                        <form method="get" class="filter-form">
+                            <div class="mb-3">
+                                <label class="form-label">Billing Cycle</label>
+                                <select name="billing_cycle" class="form-select">
+                                    <option value="" {% if not filter_billing_cycle %}selected{% endif %}>All</option>
+                                    <option value="monthly" {% if filter_billing_cycle == 'monthly' %}selected{% endif %}>Monthly</option>
+                                    <option value="yearly" {% if filter_billing_cycle == 'yearly' %}selected{% endif %}>Yearly</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="" {% if not filter_status %}selected{% endif %}>All</option>
+                                    <option value="due_soon" {% if filter_status == 'due_soon' %}selected{% endif %}>Due Soon</option>
+                                    <option value="overdue" {% if filter_status == 'overdue' %}selected{% endif %}>Overdue</option>
+                                    <option value="active" {% if filter_status == 'active' %}selected{% endif %}>Active</option>
+                                </select>
+                            </div>
+                            <div class="mb-3 row">
+                                <div class="col">
+                                    <label class="form-label">Min Price</label>
+                                    <input type="number" step="0.01" name="min_price" class="form-control" value="{{ filter_min_price }}">
+                                </div>
+                                <div class="col">
+                                    <label class="form-label">Max Price</label>
+                                    <input type="number" step="0.01" name="max_price" class="form-control" value="{{ filter_max_price }}">
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">Apply Filters</button>
+                                <a href="?" class="btn btn-outline-secondary">Clear</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="btn-group">
+                <a href="{% url 'subscriptions:export_csv' %}" class="btn btn-outline-success me-2">Export CSV</a>
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    Add New
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{% url 'subscriptions:subscription_create' %}">Add Subscription</a></li>
+                    <li><a class="dropdown-item" href="{% url 'subscriptions:import_csv' %}">Import from CSV</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5>Monthly Total</h5>
+                    <h3>${{ total_monthly|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5>Annual Total</h5>
+                    <h3>${{ total_annual|floatformat:2 }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5>Active</h5>
+                    <h3>{{ subscriptions.count }}</h3>
+                </div>
+            </div>
+        </div>
+        {% if due_soon %}
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5>Due Soon</h5>
+                    <h3>{{ due_soon.count }}</h3>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if subscriptions %}
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Price</th>
+                                <th>Cycle</th>
+                                <th>Renewal</th>
+                                <th>Status</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for subscription in subscriptions %}
+                            <tr>
+                                <td><strong>{{ subscription.service_name }}</strong></td>
+                                <td>${{ subscription.price }}</td>
+                                <td>
+                                    <span class="badge {% if subscription.billing_cycle == 'monthly' %}bg-primary{% else %}bg-danger{% endif %}">
+                                        {{ subscription.get_billing_cycle_display }}
+                                    </span>
+                                </td>
+                                <td>{{ subscription.renewal_date|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if subscription.is_overdue %}
+                                        <span class="badge bg-danger">Overdue</span>
+                                    {% elif subscription.is_due_soon %}
+                                        <span class="badge bg-warning">Due Soon</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'subscriptions:subscription_update' subscription.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                    {% if subscription.is_due_soon %}
+                                    <a href="{% url 'subscriptions:subscription_renew' subscription.pk %}"
+                                       class="btn btn-sm btn-outline-success"
+                                       onclick="return confirm('Are you sure you want to renew this subscription? This will update the next renewal date.');">
+                                        Renew
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'subscriptions:subscription_delete' subscription.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% if is_paginated %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1">First</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+        <div class="text-center py-5">
+            <h4>No subscriptions found</h4>
+            <p class="text-muted">Start tracking your subscriptions by adding your first one!</p>
+            <a href="{% url 'subscriptions:subscription_create' %}" class="btn btn-primary">Add First Subscription</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

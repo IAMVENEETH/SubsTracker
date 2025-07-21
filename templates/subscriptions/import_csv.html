@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Import Subscriptions from CSV{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Import Subscriptions from CSV</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="csv_file" class="form-label">CSV File</label>
+                            <input type="file" name="csv_file" id="csv_file" class="form-control" accept=".csv" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Import</button>
+                        <a href="{% url 'subscriptions:subscription_list' %}" class="btn btn-secondary ms-2">Cancel</a>
+                    </form>
+                    <div class="mt-3">
+                        <p class="text-muted">CSV columns: <code>service_name, price, billing_cycle, renewal_date</code></p>
+                        <p class="text-muted">Example: <code>Netflix, 15.99, monthly, 2025-08-01</code></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

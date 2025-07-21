@@ -1,0 +1,4 @@
+service_name,price,billing_cycle,renewal_date
+Spotify,150,monthly,2025-07-24
+Claude,20000,yearly,2025-08-23
+Netflix,6000,yearly,2026-08-24

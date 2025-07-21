@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}My Subscriptions - SubTrack{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="card-title">My Subscriptions</h2>
+            <a href="{% url 'subscriptions:subscription_create' %}" class="btn btn-primary">Add New Subscription</a>
+        </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h3>Total Monthly</h3>
+            <p style="font-size: 1.5rem; font-weight: bold;">${{ total_monthly|floatformat:2 }}</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+            <h3>Total Annual</h3>
+            <p style="font-size: 1.5rem; font-weight: bold;">${{ total_annual|floatformat:2 }}</p>
+        </div>
+        <div class="card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+            <h3>Active Subscriptions</h3>
+            <p style="font-size: 1.5rem; font-weight: bold;">{{ subscriptions.count }}</p>
+        </div>
+        {% if due_soon %}
+        <div class="card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
+            <h3>Due Soon</h3>
+            <p style="font-size: 1.5rem; font-weight: bold;">{{ due_soon.count }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if subscriptions %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Price</th>
+                        <th>Billing Cycle</th>
+                        <th>Renewal Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subscription in subscriptions %}
+                    <tr>
+                        <td>
+                            <strong>{{ subscription.service_name }}</strong>
+                        </td>
+                        <td>${{ subscription.price }}</td>
+                        <td>
+                            <span class="badge" style="background-color: {% if subscription.billing_cycle == 'monthly' %}#3498db{% else %}#e74c3c{% endif %}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">
+                                {{ subscription.get_billing_cycle_display }}
+                            </span>
+                        </td>
+                        <td>{{ subscription.renewal_date|date:"M d, Y" }}</td>
+                        <td>
+                            {% if subscription.is_overdue %}
+                                <span style="color: #e74c3c; font-weight: bold;">🔴 Overdue</span>
+                            {% elif subscription.is_due_soon %}
+                                <span style="color: #f39c12; font-weight: bold;">⚠️ Due Soon</span>
+                            {% else %}
+                                <span style="color: #27ae60; font-weight: bold;">✅ Active</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'subscriptions:subscription_update' subscription.pk %}" class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Edit</a>
+                            <a href="{% url 'subscriptions:subscription_delete' subscription.pk %}" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Subscription pagination">
+            <ul style="display: flex; justify-content: center; list-style: none; padding: 0; gap: 0.5rem;">
+                {% if page_obj.has_previous %}
+                    <li><a href="?page=1" class="btn btn-primary">&laquo; First</a></li>
+                    <li><a href="?page={{ page_obj.previous_page_number }}" class="btn btn-primary">Previous</a></li>
+                {% endif %}
+
+                <li class="btn" style="background-color: #6c757d; color: white;">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </li>
+
+                {% if page_obj.has_next %}
+                    <li><a href="?page={{ page_obj.next_page_number }}" class="btn btn-primary">Next</a></li>
+                    <li><a href="?page={{ page_obj.paginator.num_pages }}" class="btn btn-primary">Last &raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+        <div style="text-align: center; padding: 3rem;">
+            <h3>No subscriptions found</h3>
+            <p>You haven't added any subscriptions yet. Start tracking your subscriptions by adding your first one!</p>
+            <a href="{% url 'subscriptions:subscription_create' %}" class="btn btn-primary">Add Your First Subscription</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 
