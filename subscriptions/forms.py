@@ -13,11 +13,19 @@ class SubscriptionForm(forms.ModelForm):
     
     class Meta:
         model = Subscription
-        fields = ['service_name', 'price', 'billing_cycle', 'renewal_date']
+        fields = ['service_name', 'category', 'description', 'price', 'billing_cycle', 'renewal_date']
         widgets = {
             'service_name': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Enter service name (e.g., Netflix, Spotify)'
+            }),
+            'category': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-control',
+                'placeholder': 'Optional notes about this subscription',
+                'rows': 3
             }),
             'price': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -85,9 +93,10 @@ class CustomUserCreationForm(UserCreationForm):
 class UserProfileForm(forms.ModelForm):
     class Meta:
         model = UserProfile
-        fields = ['reminder_days']
+        fields = ['reminder_days', 'dark_theme']
         widgets = {
             'reminder_days': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 30}),
+            'dark_theme': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         } 
 
 

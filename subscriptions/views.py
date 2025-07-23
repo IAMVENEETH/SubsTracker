@@ -19,6 +19,9 @@ from io import TextIOWrapper
 from django.views.decorators.http import require_POST
 from django.utils.decorators import method_decorator
 from django.http import HttpResponse
+from django.db.models import Q, Sum, Count
+from django.db.models.functions import TruncMonth
+import json
 
 # Create your views here.
 
@@ -158,6 +161,12 @@ def settings_view(request):
                 reminder_form.save()
                 messages.success(request, 'Reminder days updated!')
                 return redirect(f'{request.path}?section=reminder')
+        elif section == 'theme':
+            theme_form = UserProfileForm(request.POST, instance=profile)
+            if theme_form.is_valid():
+                theme_form.save()
+                messages.success(request, 'Theme updated!')
+                return redirect(f'{request.path}?section=theme')
         elif section == 'profile':
             edit_user_form = EditUserForm(request.POST, instance=request.user)
             if edit_user_form.is_valid():
@@ -173,6 +182,7 @@ def settings_view(request):
     return render(request, 'subscriptions/settings.html', {
         'section': section,
         'reminder_form': reminder_form,
+        'theme_form': UserProfileForm(instance=profile),
         'edit_user_form': edit_user_form,
         'password_form': password_form,
     })
@@ -186,6 +196,20 @@ class SubscriptionListView(LoginRequiredMixin, ListView):
     
     def get_queryset(self):
         qs = Subscription.objects.filter(user=self.request.user)
+        
+        # Search functionality
+        search_query = self.request.GET.get('search')
+        if search_query:
+            qs = qs.filter(
+                Q(service_name__icontains=search_query) |
+                Q(description__icontains=search_query)
+            )
+        
+        # Category filter
+        category = self.request.GET.get('category')
+        if category:
+            qs = qs.filter(category=category)
+            
         billing_cycle = self.request.GET.get('billing_cycle')
         status = self.request.GET.get('status')
         min_price = self.request.GET.get('min_price')
@@ -228,11 +252,40 @@ class SubscriptionListView(LoginRequiredMixin, ListView):
         from datetime import timedelta
         due_soon_date = timezone.now().date() + timedelta(days=7)
         due_soon = full_queryset.filter(renewal_date__lte=due_soon_date)
+        
+        # Category breakdown
+        category_data = full_queryset.values('category').annotate(
+            total=Sum('price'),
+            count=Count('id')
+        ).order_by('-total')
+        
+        # Monthly spending trend (last 6 months)
+        from datetime import datetime, timedelta
+        six_months_ago = datetime.now().date() - timedelta(days=180)
+        monthly_trend = []
+        for i in range(6):
+            month_start = datetime.now().date().replace(day=1) - timedelta(days=30*i)
+            month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            month_subs = full_queryset.filter(
+                renewal_date__gte=month_start,
+                renewal_date__lte=month_end
+            )
+            monthly_total = sum(sub.monthly_cost for sub in month_subs)
+            monthly_trend.append({
+                'month': month_start.strftime('%b %Y'),
+                'total': float(monthly_total)
+            })
+        monthly_trend.reverse()
+        
         # Add current filter values to context for template
         context.update({
             'total_monthly': total_monthly,
             'total_annual': total_annual,
             'due_soon': due_soon,
+            'category_data': category_data,
+            'monthly_trend_json': json.dumps(monthly_trend),
+            'search_query': self.request.GET.get('search', ''),
+            'filter_category': self.request.GET.get('category', ''),
             'filter_billing_cycle': self.request.GET.get('billing_cycle', ''),
             'filter_status': self.request.GET.get('status', ''),
             'filter_min_price': self.request.GET.get('min_price', ''),

@@ -10,6 +10,7 @@ from django.dispatch import receiver
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     reminder_days = models.PositiveIntegerField(default=1, help_text='Days before renewal to send reminder email')
+    dark_theme = models.BooleanField(default=False, help_text='Enable dark theme')
 
     def __str__(self):
         return f"Profile for {self.user.username}"
@@ -31,6 +32,18 @@ class Subscription(models.Model):
         ('yearly', 'Yearly'),
     ]
     
+    CATEGORY_CHOICES = [
+        ('entertainment', 'Entertainment'),
+        ('productivity', 'Productivity'),
+        ('education', 'Education'),
+        ('health', 'Health & Fitness'),
+        ('news', 'News & Media'),
+        ('cloud', 'Cloud Storage'),
+        ('software', 'Software'),
+        ('gaming', 'Gaming'),
+        ('music', 'Music'),
+        ('other', 'Other'),
+    ]
     user = models.ForeignKey(
         User, 
         on_delete=models.CASCADE,
@@ -43,6 +56,18 @@ class Subscription(models.Model):
         help_text="Name of the subscription service (e.g., Netflix, Spotify)"
     )
     
+    category = models.CharField(
+        max_length=20,
+        choices=CATEGORY_CHOICES,
+        default='other',
+        help_text="Category of the subscription service"
+    )
+    
+    description = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Optional notes about this subscription"
+    )
     price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
